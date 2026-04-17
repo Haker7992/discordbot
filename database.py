@@ -41,6 +41,7 @@ def init():
                 channel_log_channel TEXT DEFAULT NULL,
                 mute_log_channel TEXT DEFAULT NULL,
                 whitelist_log_channel TEXT DEFAULT NULL,
+                join_log_channel TEXT DEFAULT NULL,
                 settings_channel TEXT DEFAULT NULL,
                 enabled INTEGER DEFAULT 1,
                 restore_channels INTEGER DEFAULT 1,
@@ -86,6 +87,11 @@ def init():
         try:
             conn.execute("ALTER TABLE guild_settings ADD COLUMN restore_roles INTEGER DEFAULT 1")
             print("[DB] Migration: added restore_roles")
+        except Exception:
+            pass  # колонка уже существует
+        try:
+            conn.execute("ALTER TABLE guild_settings ADD COLUMN join_log_channel TEXT DEFAULT NULL")
+            print("[DB] Migration: added join_log_channel")
         except Exception:
             pass  # колонка уже существует
 

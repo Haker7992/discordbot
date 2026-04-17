@@ -13,11 +13,11 @@ COGS = ["cogs.antiraid", "cogs.whitelist", "cogs.protect", "cogs.settings", "cog
 
 
 LOG_CHANNELS = [
-    ("📋・роли", "role_log"),
-    ("📁・каналы-роли", "channel_log"),
     ("🔨・баны-кики", "ban_log"),
+    ("📥・входы-ливы", "join_log"),
+    ("🏷️・роли", "role_log"),
+    ("📁・каналы", "channel_log"),
     ("🔇・муты-ники", "mute_log"),
-    ("✅・вайтлист", "whitelist_log"),
     ("⚙️・чат", "settings_channel"),
 ]
 
@@ -38,7 +38,8 @@ async def setup_log_channels(guild):
         database.update_setting(guild.id, "role_log_channel",      channel_ids["role_log"])
         database.update_setting(guild.id, "channel_log_channel",   channel_ids["channel_log"])
         database.update_setting(guild.id, "mute_log_channel",      channel_ids["mute_log"])
-        database.update_setting(guild.id, "whitelist_log_channel", channel_ids["whitelist_log"])
+        database.update_setting(guild.id, "whitelist_log_channel", channel_ids["ban_log"])
+        database.update_setting(guild.id, "join_log_channel",      channel_ids["join_log"])
         database.update_setting(guild.id, "settings_channel",      channel_ids["settings_channel"])
         print(f"[SETUP] Лог-каналы созданы: {guild.name}")
 
@@ -71,7 +72,6 @@ async def delete_log_channels(guild):
 
     settings = database.get_settings(guild.id)
     keys = ["log_channel", "role_log_channel", "channel_log_channel", "mute_log_channel", "whitelist_log_channel", "settings_channel"]
-
     # Сначала сбрасываем настройки
     for key in keys:
         try:
@@ -150,18 +150,14 @@ class SetupView(discord.ui.View):
 
 def _setup_embed(guild):
     settings = database.get_settings(guild.id)
-    keys = ["log_channel", "role_log_channel", "channel_log_channel", "mute_log_channel", "whitelist_log_channel", "settings_channel"]
-    labels = ["🔨 Баны/кики", "🏷️ Роли", "📁 Каналы", "🔇 Муты/ники", "✅ Вайтлист", "⚙️ Чат"]
+    keys   = ["log_channel", "join_log_channel", "role_log_channel", "channel_log_channel", "mute_log_channel", "settings_channel"]
+    labels = ["🔨 Баны/кики", "📥 Входы/ливы", "🏷️ Роли", "📁 Каналы", "🔇 Муты/ники", "⚙️ Чат"]
     lines = []
     for key, label in zip(keys, labels):
         ch_id = settings.get(key)
         val = f"<#{ch_id}>" if ch_id else "`не задан`"
         lines.append(f"{label}: {val}")
-    embed = discord.Embed(
-        title="⚙️ Setup — Лог-каналы",
-        description="\n".join(lines),
-        color=0x5865F2
-    )
+    embed = discord.Embed(title="⚙️ Setup — Лог-каналы", description="\n".join(lines), color=0x5865F2)
     return embed
 
 

@@ -95,6 +95,86 @@ def build_help_embed():
     return embed
 
 
+def build_info_embed(bot):
+    embed = discord.Embed(
+        title="🔐 ArchAngel Bot — Информация",
+        description=(
+            "Система защиты Discord-серверов 24/7.\n"
+            "Автоматически защищает сервер от рейдов, спама и несанкционированных действий."
+        ),
+        color=GOLD
+    )
+    embed.add_field(
+        name="🛡️ Авто-защита",
+        value=(
+            "• Бан/кик участника → мгновенный бан исполнителя\n"
+            "• Удаление канала → бан + авто-восстановление\n"
+            "• Удаление роли → бан + авто-восстановление\n"
+            "• Переименование канала/роли → откат\n"
+            "• Массовая выдача/снятие ролей → бан\n"
+            "• Ссылки в чате → удаление + таймаут 15 мин\n"
+            "• @everyone/@here → удаление сообщения\n"
+            "• Добавление бота без прав → кик бота\n"
+            "• Авто-ребан при разбане"
+        ),
+        inline=False
+    )
+    embed.add_field(
+        name="✅ Whitelist",
+        value=(
+            "Гранулярные права для пользователей и ролей:\n"
+            "`ban` `kick` `mute` `channels` `roles` `links` `mention_everyone` `invites` `all`\n"
+            "Whitelist строго per-guild — права на одном сервере не переносятся на другой"
+        ),
+        inline=False
+    )
+    embed.add_field(
+        name="🛡️ Защита ролей",
+        value="Авто-возврат ролей при снятии для защищённых пользователей",
+        inline=True
+    )
+    embed.add_field(
+        name="🔒 Rape List",
+        value="Список пользователей которые будут забанены при входе на сервер",
+        inline=True
+    )
+    embed.add_field(
+        name="📋 Логирование",
+        value=(
+            "• 🔨 Баны/кики\n"
+            "• 📥 Входы/ливы\n"
+            "• 🏷️ Выдача/снятие ролей\n"
+            "• 📁 Создание/удаление каналов\n"
+            "• 🔇 Муты, смена ников, войс\n"
+            "• ✏️ Редактирование/удаление сообщений"
+        ),
+        inline=True
+    )
+    embed.add_field(
+        name="💾 Backup",
+        value="Авто-снапшот структуры сервера при добавлении бота. Восстановление командой `!restore`",
+        inline=True
+    )
+    embed.add_field(
+        name="🤖 Антиспам",
+        value="5+ сообщений за 5 сек → таймаут 5 мин. 3+ упоминания ролей → таймаут 10 мин",
+        inline=True
+    )
+    embed.add_field(
+        name="⚙️ Настройки",
+        value=(
+            "`/settings menu` — лимиты, наказания, вкл/выкл защиту,\n"
+            "вкл/выкл восстановление каналов и ролей"
+        ),
+        inline=False
+    )
+    guilds = len(bot.guilds) if bot else "—"
+    members = sum(g.member_count for g in bot.guilds) if bot else "—"
+    embed.set_footer(text=f"Серверов: {guilds} • Участников: {members} • Создатель: DavaidKa")
+    embed.timestamp = discord.utils.utcnow()
+    return embed
+
+
 class Help(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -106,6 +186,14 @@ class Help(commands.Cog):
     @app_commands.command(name="help", description="Показать список команд")
     async def slash_help(self, interaction: discord.Interaction):
         await interaction.response.send_message(embed=build_help_embed())
+
+    @commands.command(name="info")
+    async def info_cmd(self, ctx):
+        await ctx.send(embed=build_info_embed(self.bot))
+
+    @app_commands.command(name="info", description="Информация о боте и его возможностях")
+    async def slash_info(self, interaction: discord.Interaction):
+        await interaction.response.send_message(embed=build_info_embed(self.bot))
 
 
 async def setup(bot):
