@@ -5,9 +5,16 @@ import config
 import database
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=config.PREFIX, intents=intents, help_command=None, dm_help=True)
-bot.invite_cache = {}  # кэш инвайтов для отслеживания входов
-bot.unsetup_guilds = set()  # guild_id где сейчас идёт unsetup — не восстанавливать каналы
+
+async def get_prefix(bot, message):
+    # В ЛС: поддерживаем и . и ! префикс
+    if not message.guild:
+        return [".", "!"]
+    return config.PREFIX
+
+bot = commands.Bot(command_prefix=get_prefix, intents=intents, help_command=None, dm_help=True)
+bot.invite_cache = {}
+bot.unsetup_guilds = set()
 
 COGS = ["cogs.antiraid", "cogs.whitelist", "cogs.protect", "cogs.settings", "cogs.help", "cogs.logger", "cogs.owner", "cogs.blacklist", "cogs.backup", "cogs.dm_control", "cogs.moderation", "cogs.antispam", "cogs.rape"]
 

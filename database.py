@@ -66,6 +66,7 @@ def init():
                 user_id TEXT NOT NULL,
                 reason TEXT DEFAULT '',
                 ban_days INTEGER DEFAULT 0,
+                expires_at INTEGER DEFAULT 0,
                 added_at INTEGER NOT NULL,
                 added_by TEXT NOT NULL,
                 PRIMARY KEY (guild_id, user_id)
@@ -92,6 +93,11 @@ def init():
         try:
             conn.execute("ALTER TABLE guild_settings ADD COLUMN join_log_channel TEXT DEFAULT NULL")
             print("[DB] Migration: added join_log_channel")
+        except Exception:
+            pass  # колонка уже существует
+        try:
+            conn.execute("ALTER TABLE rape_list ADD COLUMN expires_at INTEGER DEFAULT 0")
+            print("[DB] Migration: added rape_list.expires_at")
         except Exception:
             pass  # колонка уже существует
 
@@ -214,12 +220,12 @@ def get_recent_actions(guild_id, user_id, action, since):
     return rows
 
 # --- Rape List ---
-def add_rape(guild_id, user_id, reason, ban_days, added_by):
+def add_rape(guild_id, user_id, reason, ban_days, added_by, expires_at=0):
     import time
     with get_conn() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO rape_list (guild_id, user_id, reason, ban_days, added_at, added_by) VALUES (?,?,?,?,?,?)",
-            (str(guild_id), str(user_id), reason, int(ban_days), int(time.time()), str(added_by))
+            "INSERT OR REPLACE INTO rape_list (guild_id, user_id, reason, ban_days, expires_at, added_at, added_by) VALUES (?,?,?,?,?,?,?)",
+            (str(guild_id), str(user_id), reason, int(ban_days), int(expires_at), int(time.time()), str(added_by))
         )
 
 def remove_rape(guild_id, user_id):

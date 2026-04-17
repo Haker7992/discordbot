@@ -1,10 +1,10 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 import database as db
 from utils.checks import is_owner_id
 from utils.embeds import success, error, info
 import time
+import re
 
 
 def _owner_only():
@@ -13,9 +13,98 @@ def _owner_only():
     return commands.check(predicate)
 
 
+def _get_guild(bot, user_id):
+    try:
+        from cogs.dm_control import selected_guild
+        gid = selected_guild.get(user_id)
+        if gid:
+            return bot.get_guild(gid)
+    except Exception:
+        pass
+    if len(bot.guilds) == 1:
+        return bot.guilds[0]
+    return None
+
+
+def _no_guild_embed(bot):
+    guilds = bot.guilds
+    desc = "\n".join(f"`{i+1}.` **{g.name}** — `{g.id}`" for i, g in enumerate(guilds))
+    return error("Выбери сервер", f"Используй `!select <номер>`\n{desc}")
+
+
+def _dm_only():
+    async def predicate(ctx):
+        if ctx.guild:
+            try:
+                await ctx.message.delete()
+            except Exception:
+                pass
+            return False
+        return True
+    return commands.check(predicate)
+
+
+def _parse_duration(text: str):
+    """
+    Парсит строку вида '999d', '30d', '0d' (0 = навсегда).
+    Возвращает (days: int, expires_at: int).
+    expires_at = 0 означает навсегда.
+    """
+    match = re.fullmatch(r'(\d+)d', text.strip().lower())
+    if not match:
+        return None, None
+    days = int(match.group(1))
+    if days == 0:
+        return 0, 0  # навсегда
+    expires_at = int(time.time()) + days * 86400
+    return days, expires_at
+
+
+def _expires_str(expires_at: int) -> str:
+    if not expires_at:
+        return "навсегда"
+    return f"<t:{expires_at}:D> (<t:{expires_at}:R>)"
+
+
 class Rape(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    # ── Авторебан при разбане если в rape list и срок не истёк ──
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild, user):
+        entry = db.get_rape(guild.id, user.id)
+        if not entry:
+            return
+
+        # Проверяем не истёк ли срок
+        expires_at = entry.get("expires_at", 0)
+        if expires_at and time.time() > expires_at:
+            # Срок истёк — убираем из списка
+            db.remove_rape(guild.id, user.id)
+            print(f"[RAPE] Срок истёк для {user.id}, удалён из списка")
+            return
+
+        import asyncio
+        await asyncio.sleep(1)
+        try:
+            await guild.ban(user, reason=f"Rape List (авторебан): {entry.get('reason', '—')}")
+            db.log_action(guild.id, user.id, "rape_reban", "авторебан после разбана")
+            print(f"[RAPE] Авторебан {user.id} на {guild.name}")
+
+            settings = db.get_settings(guild.id)
+            ch_id = settings.get("log_channel")
+            if ch_id:
+                ch = guild.get_channel(int(ch_id))
+                if ch:
+                    embed = discord.Embed(title="🔒 Rape List — Авторебан", color=0xE74C3C)
+                    embed.add_field(name="Участник", value=f"{user.mention} (`{user.id}`)", inline=True)
+                    embed.add_field(name="Причина", value=entry.get("reason") or "—", inline=True)
+                    embed.add_field(name="До", value=_expires_str(expires_at), inline=True)
+                    embed.timestamp = discord.utils.utcnow()
+                    await ch.send(embed=embed)
+        except Exception as e:
+            print(f"[RAPE REBAN ERROR] {e}")
 
     # ── Авто-бан при входе если в rape list ──
     @commands.Cog.listener()
@@ -23,194 +112,159 @@ class Rape(commands.Cog):
         entry = db.get_rape(member.guild.id, member.id)
         if not entry:
             return
+
+        expires_at = entry.get("expires_at", 0)
+        if expires_at and time.time() > expires_at:
+            db.remove_rape(member.guild.id, member.id)
+            return
+
         reason = entry.get("reason") or "Rape list"
-        ban_days = int(entry.get("ban_days", 0))
         try:
-            await member.guild.ban(
-                member,
-                reason=f"Rape List: {reason}",
-                delete_message_days=min(ban_days, 7)
-            )
+            await member.guild.ban(member, reason=f"Rape List: {reason}", delete_message_days=0)
             db.log_action(member.guild.id, member.id, "rape_ban", reason)
             print(f"[RAPE] Забанен {member.id} при входе | {reason}")
 
-            # Лог в ban_log канал
             settings = db.get_settings(member.guild.id)
             ch_id = settings.get("log_channel")
             if ch_id:
                 ch = member.guild.get_channel(int(ch_id))
                 if ch:
-                    embed = discord.Embed(title="🔒 Rape List — Авто-бан", color=0xE74C3C)
+                    embed = discord.Embed(title="🔒 Rape List — Авто-бан при входе", color=0xE74C3C)
                     embed.add_field(name="Участник", value=f"{member.mention} (`{member.id}`)", inline=True)
                     embed.add_field(name="Причина", value=reason, inline=True)
-                    embed.add_field(name="Удалить сообщений", value=f"`{ban_days}` дн.", inline=True)
+                    embed.add_field(name="До", value=_expires_str(expires_at), inline=True)
                     embed.timestamp = discord.utils.utcnow()
                     await ch.send(embed=embed)
         except Exception as e:
             print(f"[RAPE BAN ERROR] {e}")
 
-    # ── Prefix команды ──
+    # ══════════════════════════════════════════
+    # .rape <id> <дней>d <причина>
+    # Только через ЛС бота
+    # ══════════════════════════════════════════
+
     @commands.group(name="rape", invoke_without_command=True)
     @_owner_only()
-    async def rape(self, ctx):
-        await ctx.send(embed=info(
-            "Rape List",
-            "`!rape add <id> <дней> <причина>` — добавить\n"
-            "`!rape remove <id>` — убрать\n"
-            "`!rape list` — список\n"
-            "`!rape ban <id> <дней> <причина>` — добавить и сразу забанить"
-        ))
+    @_dm_only()
+    async def rape(self, ctx, user_id: int = None, duration: str = None, *, reason: str = "Не указана"):
+        if user_id is None or duration is None:
+            return await ctx.send(embed=info(
+                "🔒 Rape List",
+                "**Использование:**\n"
+                "`.rape <id> <дней>d [причина]`\n\n"
+                "**Примеры:**\n"
+                "`.rape 123456789 999d спам` — бан на 999 дней\n"
+                "`.rape 123456789 0d` — бан навсегда\n\n"
+                "`.unrape <id>` — убрать из списка\n"
+                "`.rape list` — список\n\n"
+                "При разбане — бот банит обратно автоматически."
+            ))
 
-    @rape.command(name="add")
-    @_owner_only()
-    async def rape_add(self, ctx, user_id: int, ban_days: int = 0, *, reason: str = "Не указана"):
-        db.add_rape(ctx.guild.id, user_id, reason, ban_days, ctx.author.id)
-        # Если пользователь сейчас на сервере — баним сразу
-        member = ctx.guild.get_member(user_id)
-        if member:
-            try:
-                await ctx.guild.ban(member, reason=f"Rape List: {reason}", delete_message_days=min(ban_days, 7))
-                db.log_action(ctx.guild.id, user_id, "rape_ban", reason)
-                await ctx.send(embed=success(
-                    "Rape List",
-                    f"`{user_id}` добавлен в список и **немедленно забанен**.\n"
-                    f"Причина: `{reason}` | Удалить сообщений: `{ban_days}` дн."
-                ))
-                return
-            except Exception as e:
-                print(f"[RAPE ADD BAN] {e}")
-        await ctx.send(embed=success(
-            "Rape List",
-            f"`{user_id}` добавлен. При следующем входе будет забанен.\n"
-            f"Причина: `{reason}` | Удалить сообщений: `{ban_days}` дн."
-        ))
+        days, expires_at = _parse_duration(duration)
+        if days is None:
+            return await ctx.send(embed=error(
+                "Ошибка формата",
+                "Укажи дни в формате `<число>d`\n"
+                "Например: `999d`, `30d`, `0d` (навсегда)"
+            ))
 
-    @rape.command(name="ban")
-    @_owner_only()
-    async def rape_ban(self, ctx, user_id: int, ban_days: int = 0, *, reason: str = "Не указана"):
-        """Добавляет в rape list и сразу банит."""
-        db.add_rape(ctx.guild.id, user_id, reason, ban_days, ctx.author.id)
+        g = _get_guild(self.bot, ctx.author.id)
+        if not g:
+            return await ctx.send(embed=_no_guild_embed(self.bot))
+
+        db.add_rape(g.id, user_id, reason, 0, ctx.author.id, expires_at)
+
         try:
-            await ctx.guild.ban(
-                discord.Object(id=user_id),
-                reason=f"Rape List: {reason}",
-                delete_message_days=min(ban_days, 7)
-            )
-            db.log_action(ctx.guild.id, user_id, "rape_ban", reason)
+            await g.ban(discord.Object(id=user_id), reason=f"Rape List: {reason}", delete_message_days=0)
+            db.log_action(g.id, user_id, "rape_ban", reason)
             await ctx.send(embed=success(
-                "Rape List — Бан",
-                f"`{user_id}` добавлен в список и забанен.\n"
-                f"Причина: `{reason}` | Удалить сообщений: `{ban_days}` дн."
+                "🔒 Rape List",
+                f"**ID:** `{user_id}`\n"
+                f"**Сервер:** {g.name}\n"
+                f"**Причина:** {reason}\n"
+                f"**До:** {_expires_str(expires_at)}\n\n"
+                f"Забанен. При разбане — авторебан."
             ))
         except discord.NotFound:
             await ctx.send(embed=success(
-                "Rape List",
-                f"`{user_id}` добавлен в список (пользователь не найден на сервере).\n"
-                f"Причина: `{reason}`"
+                "🔒 Rape List",
+                f"**ID:** `{user_id}`\n"
+                f"**Сервер:** {g.name}\n"
+                f"**Причина:** {reason}\n"
+                f"**До:** {_expires_str(expires_at)}\n\n"
+                f"Не найден на сервере — добавлен в список.\n"
+                f"При входе или разбане — забанит автоматически."
             ))
         except Exception as e:
             await ctx.send(embed=error("Ошибка", str(e)))
 
-    @rape.command(name="remove")
-    @_owner_only()
-    async def rape_remove(self, ctx, user_id: int):
-        entry = db.get_rape(ctx.guild.id, user_id)
-        if not entry:
-            return await ctx.send(embed=error("Rape List", f"`{user_id}` не в списке."))
-        db.remove_rape(ctx.guild.id, user_id)
-        await ctx.send(embed=success("Rape List", f"`{user_id}` удалён из списка."))
-
     @rape.command(name="list")
     @_owner_only()
+    @_dm_only()
     async def rape_list(self, ctx):
-        entries = db.get_all_rape(ctx.guild.id)
+        g = _get_guild(self.bot, ctx.author.id)
+        if not g:
+            return await ctx.send(embed=_no_guild_embed(self.bot))
+
+        entries = db.get_all_rape(g.id)
         if not entries:
-            return await ctx.send(embed=info("Rape List", "Список пуст."))
+            return await ctx.send(embed=info("Rape List", f"Список пуст на **{g.name}**."))
+
         lines = []
         for e in entries:
-            added = f"<t:{e['added_at']}:d>"
-            lines.append(f"`{e['user_id']}` — {e['reason'] or '—'} | `{e['ban_days']}` дн. | {added}")
-        # Разбиваем на страницы по 15
+            expires_at = e.get("expires_at", 0)
+            # Проверяем не истёк ли срок
+            if expires_at and time.time() > expires_at:
+                db.remove_rape(g.id, e["user_id"])
+                continue
+            until = _expires_str(expires_at)
+            lines.append(f"`{e['user_id']}` — {e['reason'] or '—'} | до {until}")
+
+        if not lines:
+            return await ctx.send(embed=info("Rape List", f"Список пуст на **{g.name}**."))
+
         for i in range(0, len(lines), 15):
             chunk = lines[i:i + 15]
             await ctx.send(embed=discord.Embed(
-                title=f"🔒 Rape List ({i+1}–{min(i+15, len(lines))} из {len(lines)})",
+                title=f"🔒 Rape List — {g.name} ({len(lines)} записей)",
                 description="\n".join(chunk),
                 color=0xE74C3C
             ))
 
-    # ── Slash команды ──
-    rape_group = app_commands.Group(name="rape", description="Rape list (только owner)")
-
-    @rape_group.command(name="add", description="Добавить в rape list")
-    @app_commands.describe(user_id="ID пользователя", ban_days="Удалить сообщений (дней, 0-7)", reason="Причина")
-    async def slash_rape_add(self, interaction: discord.Interaction, user_id: str, ban_days: int = 0, reason: str = "Не указана"):
-        if not is_owner_id(interaction.user.id):
-            return await interaction.response.send_message(embed=error("Нет доступа", "Только owner."), ephemeral=True)
-        uid = int(user_id)
-        db.add_rape(interaction.guild.id, uid, reason, ban_days, interaction.user.id)
-        member = interaction.guild.get_member(uid)
-        if member:
-            try:
-                await interaction.guild.ban(member, reason=f"Rape List: {reason}", delete_message_days=min(ban_days, 7))
-                db.log_action(interaction.guild.id, uid, "rape_ban", reason)
-                return await interaction.response.send_message(embed=success(
-                    "Rape List", f"`{uid}` добавлен и **немедленно забанен**.\nПричина: `{reason}`"
-                ), ephemeral=True)
-            except Exception:
-                pass
-        await interaction.response.send_message(embed=success(
-            "Rape List", f"`{uid}` добавлен. При входе будет забанен.\nПричина: `{reason}` | `{ban_days}` дн."
-        ), ephemeral=True)
-
-    @rape_group.command(name="ban", description="Добавить в rape list и сразу забанить")
-    @app_commands.describe(user_id="ID пользователя", ban_days="Удалить сообщений (дней, 0-7)", reason="Причина")
-    async def slash_rape_ban(self, interaction: discord.Interaction, user_id: str, ban_days: int = 0, reason: str = "Не указана"):
-        if not is_owner_id(interaction.user.id):
-            return await interaction.response.send_message(embed=error("Нет доступа", "Только owner."), ephemeral=True)
-        uid = int(user_id)
-        db.add_rape(interaction.guild.id, uid, reason, ban_days, interaction.user.id)
-        try:
-            await interaction.guild.ban(discord.Object(id=uid), reason=f"Rape List: {reason}", delete_message_days=min(ban_days, 7))
-            db.log_action(interaction.guild.id, uid, "rape_ban", reason)
-            await interaction.response.send_message(embed=success(
-                "Rape List — Бан", f"`{uid}` добавлен и забанен.\nПричина: `{reason}` | `{ban_days}` дн."
-            ), ephemeral=True)
-        except discord.NotFound:
-            await interaction.response.send_message(embed=success(
-                "Rape List", f"`{uid}` добавлен (не найден на сервере).\nПричина: `{reason}`"
-            ), ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(embed=error("Ошибка", str(e)), ephemeral=True)
-
-    @rape_group.command(name="remove", description="Убрать из rape list")
-    @app_commands.describe(user_id="ID пользователя")
-    async def slash_rape_remove(self, interaction: discord.Interaction, user_id: str):
-        if not is_owner_id(interaction.user.id):
-            return await interaction.response.send_message(embed=error("Нет доступа", "Только owner."), ephemeral=True)
-        uid = int(user_id)
-        entry = db.get_rape(interaction.guild.id, uid)
+    @rape.command(name="remove")
+    @_owner_only()
+    @_dm_only()
+    async def rape_remove(self, ctx, user_id: int):
+        g = _get_guild(self.bot, ctx.author.id)
+        if not g:
+            return await ctx.send(embed=_no_guild_embed(self.bot))
+        entry = db.get_rape(g.id, user_id)
         if not entry:
-            return await interaction.response.send_message(embed=error("Rape List", f"`{uid}` не в списке."), ephemeral=True)
-        db.remove_rape(interaction.guild.id, uid)
-        await interaction.response.send_message(embed=success("Rape List", f"`{uid}` удалён из списка."), ephemeral=True)
+            return await ctx.send(embed=error("Rape List", f"`{user_id}` не в списке на **{g.name}**."))
+        db.remove_rape(g.id, user_id)
+        await ctx.send(embed=success(
+            "Rape List",
+            f"`{user_id}` удалён из списка на **{g.name}**.\n"
+            f"Авторебан отключён."
+        ))
 
-    @rape_group.command(name="list", description="Показать rape list")
-    async def slash_rape_list(self, interaction: discord.Interaction):
-        if not is_owner_id(interaction.user.id):
-            return await interaction.response.send_message(embed=error("Нет доступа", "Только owner."), ephemeral=True)
-        entries = db.get_all_rape(interaction.guild.id)
-        if not entries:
-            return await interaction.response.send_message(embed=info("Rape List", "Список пуст."), ephemeral=True)
-        lines = [
-            f"`{e['user_id']}` — {e['reason'] or '—'} | `{e['ban_days']}` дн."
-            for e in entries[:20]
-        ]
-        await interaction.response.send_message(embed=discord.Embed(
-            title=f"🔒 Rape List ({len(entries)} записей)",
-            description="\n".join(lines),
-            color=0xE74C3C
-        ), ephemeral=True)
+    # .unrape <id> — алиас
+    @commands.command(name="unrape")
+    @_owner_only()
+    @_dm_only()
+    async def unrape(self, ctx, user_id: int):
+        g = _get_guild(self.bot, ctx.author.id)
+        if not g:
+            return await ctx.send(embed=_no_guild_embed(self.bot))
+        entry = db.get_rape(g.id, user_id)
+        if not entry:
+            return await ctx.send(embed=error("Rape List", f"`{user_id}` не в списке на **{g.name}**."))
+        db.remove_rape(g.id, user_id)
+        await ctx.send(embed=success(
+            "Rape List",
+            f"`{user_id}` удалён из списка на **{g.name}**.\n"
+            f"Авторебан отключён."
+        ))
 
 
 async def setup(bot):
