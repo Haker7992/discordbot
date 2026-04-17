@@ -100,7 +100,7 @@ class Rape(commands.Cog):
 
     @commands.group(name="rape", invoke_without_command=True)
     @_owner_only()
-    async def rape(self, ctx, user: discord.User = None, duration: str = None, *, reason: str = "Не указана"):
+    async def rape(self, ctx, user: discord.User = None, duration: str = None, *, reason: str = "—"):
         if user is None or duration is None:
             return await ctx.send(embed=info(
                 "🔒 Rape List",
@@ -127,8 +127,7 @@ class Rape(commands.Cog):
                 "🔒 Rape List",
                 f"**Участник:** {user.mention} (`{user_id}`)\n"
                 f"**Причина:** {reason}\n"
-                f"**До:** {_expires_str(expires_at)}\n"
-                f"Забанен. При разбане — авторебан."
+                f"**До:** {_expires_str(expires_at)}"
             ))
         except discord.NotFound:
             await ctx.send(embed=success(

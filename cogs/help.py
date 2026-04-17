@@ -10,103 +10,89 @@ PURPLE = 0x9B59B6
 
 def build_help_embed():
     embed = discord.Embed(
-        title="🔐  A R C H A N G E L  B O T",
+        title="🔐 ARCHANGEL BOT",
         description=(
             "```ansi\n"
             "\u001b[1;33m  Система защиты сервера 24/7\u001b[0m\n"
-            "```\n"
-            f"**Префикс:** `{PREFIX}`  **|**  **Slash:** `/`  **|**  **ЛС:** `.`"
+            "```"
+            f"**Префикс:** `{PREFIX}`  **·**  **Slash:** `/`"
         ),
         color=GOLD
     )
-
     embed.add_field(
         name="🚨  Авто-защита",
         value=(
             "```\n"
-            "Бан/кик        → мгновенный бан исполнителя\n"
-            "Удал. канала   → бан + авто-восстановление\n"
-            "Удал. роли     → бан + авто-восстановление\n"
-            "Изм. канала    → откат изменений\n"
-            "5+ ролей за 30с → бан\n"
-            "Ссылка в чате  → удаление + таймаут 15м\n"
-            "@everyone/@here → удаление сообщения\n"
-            "Добавление бота → кик бота\n"
+            "Бан/кик      → бан исполнителя\n"
+            "Удал. канала → бан + восстановление\n"
+            "Удал. роли   → бан + восстановление\n"
+            "Изм. канала  → откат\n"
+            "5+ ролей/30с → бан\n"
+            "Ссылка       → удаление + таймаут\n"
+            "@everyone    → удаление\n"
+            "Добавл. бота → кик\n"
             "```"
         ),
         inline=False
     )
-
     embed.add_field(
         name="✅  Whitelist",
         value=(
-            f"`{PREFIX}whitelist add @user`\n"
-            f"`{PREFIX}whitelist remove @user`\n"
-            f"`{PREFIX}whitelist list`\n"
-            f"`{PREFIX}whitelist perms @user`\n"
-            f"`{PREFIX}whitelist role add/remove/list/perms`\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "`/whitelist add/remove/list/perms`\n"
-            "`/whitelist role_add/role_remove/role_list/role_perms`"
+            "```\n"
+            "!whitelist add/remove/list/perms\n"
+            "!whitelist role add/remove/list/perms\n"
+            "/whitelist ...\n"
+            "```"
         ),
         inline=True
     )
-
     embed.add_field(
         name="🛡️  Защита ролей",
         value=(
-            f"`{PREFIX}protect add @user`\n"
-            f"`{PREFIX}protect remove @user`\n"
-            f"`{PREFIX}protect list`\n"
-            f"`{PREFIX}protect roles @user`\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "`/protect add/remove/list/roles`"
+            "```\n"
+            "!protect add/remove/list/roles\n"
+            "/protect ...\n"
+            "```"
         ),
         inline=True
     )
-
     embed.add_field(
-        name="🔒  Rape List (только в ЛС, префикс `.`)",
+        name="🔒  Rape List  [ префикс: . ]",
         value=(
-            "`.rape <id> <дней>d [причина]` — забанить\n"
-            "`.rape 123 999d спам` — бан на 999 дней\n"
-            "`.rape 123 0d` — бан навсегда\n"
-            "`.unrape <id>` — убрать из списка\n"
-            "`.rape list` — список\n"
-            "При разбане — авторебан автоматически."
+            "```\n"
+            ".rape <id/@> <дней>d [причина]\n"
+            ".unrape <id/@>\n"
+            ".rape list\n"
+            "```"
         ),
         inline=False
     )
-
     embed.add_field(
         name="⚙️  Настройки",
         value=(
-            f"`{PREFIX}settings` | `/settings menu`\n"
-            f"`{PREFIX}setup` | `/setup` — создать лог-каналы\n"
-            f"`{PREFIX}unsetup` | `/unsetup` — удалить лог-каналы\n"
-            f"`{PREFIX}serverinfo` | `/serverinfo`\n"
-            f"`{PREFIX}backup` / `{PREFIX}restore`\n"
-            f"`{PREFIX}info` | `/info` — о боте"
+            "```\n"
+            "!settings  /settings menu\n"
+            "!setup     /setup\n"
+            "!unsetup   /unsetup\n"
+            "!backup    !restore\n"
+            "```"
         ),
-        inline=False
+        inline=True
     )
-
     embed.add_field(
         name="🛡️  Модерация",
         value=(
-            f"`{PREFIX}warn @user [причина]` | `/warn`\n"
-            f"`{PREFIX}warns [@user]` | `/warns`\n"
-            f"`{PREFIX}clearwarns @user`\n"
-            f"`{PREFIX}clear [кол-во]` | `/clear`\n"
-            f"`{PREFIX}slowmode [сек]` | `/slowmode`\n"
-            f"`{PREFIX}lock` / `{PREFIX}unlock` | `/lock` `/unlock`\n"
-            f"`{PREFIX}userinfo [@user]` | `/userinfo`\n"
-            f"`{PREFIX}roleinfo @role` | `/roleinfo`\n"
-            f"`{PREFIX}autorole @role` | `/autorole`"
+            "```\n"
+            "!warn  !warns  !clearwarns\n"
+            "!clear  !slowmode\n"
+            "!lock  !unlock\n"
+            "!userinfo  !roleinfo\n"
+            "!autorole\n"
+            "```"
         ),
-        inline=False
+        inline=True
     )
-    embed.set_footer(text="!ohelp — панель owner команд  •  /info — подробнее о боте")
+    embed.set_footer(text="!ohelp — панель owner  ·  /info — о боте")
     embed.timestamp = discord.utils.utcnow()
     return embed
 
