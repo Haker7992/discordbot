@@ -54,6 +54,7 @@ class Backup(commands.Cog):
         self._snapshots[guild.id] = await self._collect(guild)
 
     # ── Восстановление удалённого канала ──
+    # ── Восстановление удалённого канала ──
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
@@ -62,7 +63,7 @@ class Backup(commands.Cog):
         if hasattr(self.bot, 'unsetup_guilds') and guild.id in self.bot.unsetup_guilds:
             return
 
-        # Не восстанавливаем лог-каналы бота
+        # Не восстанавливаем лог-каналы бота по ID
         settings = db.get_settings(guild.id)
         log_keys = ["log_channel", "role_log_channel", "channel_log_channel",
                     "mute_log_channel", "whitelist_log_channel", "join_log_channel", "settings_channel"]
@@ -70,21 +71,7 @@ class Backup(commands.Cog):
         if str(channel.id) in log_ids:
             return
 
-        # Не восстанавливаем категорию с именем "Logs" если её удалил бот
-        if isinstance(channel, discord.CategoryChannel) and "logs" in channel.name.lower():
-            await asyncio.sleep(0.5)
-            try:
-                async for entry in guild.audit_logs(limit=3, action=discord.AuditLogAction.channel_delete):
-                    if time.time() - entry.created_at.timestamp() < 5:
-                        if entry.user.id == self.bot.user.id:
-                            return
-                        break
-            except Exception:
-                pass
-
         snapshot = self._snapshots.get(guild.id)
-        if not snapshot:
-            return
         if not snapshot:
             return
 
@@ -95,14 +82,13 @@ class Backup(commands.Cog):
             async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.channel_delete):
                 if time.time() - entry.created_at.timestamp() > 5:
                     continue
-                # Проверяем что это именно наш канал
                 if entry.target and entry.target.id == channel.id:
                     executor_id = entry.user.id
                     break
         except Exception:
             pass
 
-        # Если бот удалил (antiraid) — не восстанавливаем
+        # Если бот удалил — не восстанавливаем
         if executor_id == self.bot.user.id:
             return
 
@@ -278,38 +264,47 @@ class Backup(commands.Cog):
         await msg.edit(embed=success("Restore", "Структура и сообщения восстановлены."))
 
     async def _collect(self, guild):
+        """Собирает снапшот структуры сервера, исключая лог-каналы бота."""
         data = {"name": guild.name, "roles": [], "categories": [], "channels": []}
+
+        # Получаем ID лог-каналов чтобы исключить их из снапшота
+        settings = db.get_settings(guild.id)
+        log_keys = ["log_channel", "role_log_channel", "channel_log_channel",
+                    "mute_log_channel", "whitelist_log_channel", "join_log_channel", "settings_channel"]
+        log_ids = {str(settings.get(k)) for k in log_keys if settings.get(k)}
 
         # Роли
         for role in reversed(guild.roles):
             if role.is_default() or role.managed:
                 continue
             data["roles"].append({
-                "name": role.name,
-                "color": role.color.value,
-                "hoist": role.hoist,
-                "mentionable": role.mentionable,
-                "permissions": role.permissions.value,
-                "position": role.position
+                "name": role.name, "color": role.color.value,
+                "hoist": role.hoist, "mentionable": role.mentionable,
+                "permissions": role.permissions.value, "position": role.position
             })
 
-        # Категории
+        # Категории — исключаем категорию Logs
         for cat in guild.categories:
+            # Пропускаем категорию если все её каналы — лог-каналы бота
+            cat_channel_ids = {str(ch.id) for ch in cat.channels}
+            if cat_channel_ids and cat_channel_ids.issubset(log_ids):
+                continue
+            if "logs" in cat.name.lower() and cat_channel_ids.issubset(log_ids | {""}):
+                continue
             overwrites = self._serialize_overwrites(cat, guild)
             data["categories"].append({
-                "name": cat.name,
-                "position": cat.position,
-                "overwrites": overwrites
+                "name": cat.name, "position": cat.position, "overwrites": overwrites
             })
 
-        # Каналы
+        # Каналы — исключаем лог-каналы
         for ch in guild.channels:
             if isinstance(ch, discord.CategoryChannel):
                 continue
+            if str(ch.id) in log_ids:
+                continue
             overwrites = self._serialize_overwrites(ch, guild)
             entry = {
-                "name": ch.name,
-                "type": str(ch.type),
+                "name": ch.name, "type": str(ch.type),
                 "position": ch.position,
                 "category": ch.category.name if ch.category else None,
                 "overwrites": overwrites
