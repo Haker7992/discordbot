@@ -112,22 +112,27 @@ class AntiRaid(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel):
         guild = channel.guild
-        # Сразу удаляем канал
+
+        # Сначала проверяем кто создал
+        executor = await self.get_executor(guild, discord.AuditLogAction.channel_create)
+
+        # Если создал сам бот — не трогаем
+        if not executor or executor.id == self.bot.user.id:
+            return
+
+        exec_member = guild.get_member(executor.id)
+
+        # Если вайтлистер создал — не трогаем
+        if exec_member and not exec_member.bot:
+            if is_whitelisted(guild.id, executor.id, "channels", member=exec_member):
+                return
+
+        # Удаляем канал и баним
         try:
             await channel.delete(reason="Anti-Raid: создание канала без прав")
         except Exception:
             pass
-        executor = await self.get_executor(guild, discord.AuditLogAction.channel_create)
-        if not executor or executor.id == self.bot.user.id:
-            return
-        exec_member = guild.get_member(executor.id)
-        # Боты тоже баним — не пропускаем их
-        if exec_member and not exec_member.bot:
-            if is_whitelisted(guild.id, executor.id, "channels", member=exec_member):
-                return
-        elif not exec_member:
-            # Пользователь уже покинул сервер или не найден — баним по ID
-            pass
+
         await instant_ban(guild, executor.id, "Anti-Raid: Создание канала без прав")
 
     # --- ПЕРЕИМЕНОВАНИЕ КАНАЛА → возврат старого названия ---
