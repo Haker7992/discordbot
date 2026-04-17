@@ -16,73 +16,60 @@ def is_owner():
 def build_owner_help():
     embed = discord.Embed(
         title="👑  O W N E R  P A N E L",
-        description="```\nКоманды доступны только создателям бота\n```",
+        description="```\nТолько для создателей бота\n```",
         color=0xFFD700
     )
-    embed.add_field(name="🔨  Модерация", value=(
-        "`!ban @user` | `/owner ban`\n"
-        "`!unban <id>` | `/owner unban`\n"
-        "`!kick @user` | `/owner kick`\n"
-        "`!mute @user <мин>` | `/owner mute`\n"
-        "`!unmute @user` | `/owner unmute`\n"
-        "`!permaban <id>` | `/owner permaban`\n"
-        "`!inv <id>` | `/owner inv`"
+    embed.add_field(name="🔨 Модерация", value=(
+        "`!ban` `!unban` `!kick`\n"
+        "`!mute` `!unmute`\n"
+        "`!permaban` `!inv`\n"
+        "`/owner ban/unban/kick/mute`"
     ), inline=True)
-    embed.add_field(name="🏷️  Роли", value=(
-        "`!giverole @user @role` | `/owner giverole`\n"
-        "`!takerole @user @role` | `/owner takerole`\n"
+    embed.add_field(name="🏷️ Роли", value=(
+        "`!giverole` `!takerole`\n"
         "`!giveroleall @role`\n"
-        "`!botadd @bot` | `/owner botadd`"
+        "`!botadd @bot`\n"
+        "`/owner giverole/takerole`"
     ), inline=True)
-    embed.add_field(name="** **", value="** **", inline=False)
-    embed.add_field(name="🔒  Rape List (только в ЛС, префикс `.`)", value=(
-        "`.rape <id> <дней>d [причина]` — забанить\n"
-        "`.rape 123 999d спам` — бан на 999 дней\n"
-        "`.rape 123 0d` — бан навсегда\n"
-        "`.unrape <id>` — убрать из списка\n"
-        "`.rape list` — список\n"
-        "При разбане — авторебан автоматически."
+    embed.add_field(name="🔒 Rape List (`.` префикс)", value=(
+        "`.rape <id> <дней>d [причина]`\n"
+        "`.rape 123 999d спам`\n"
+        "`.rape 123 0d` — навсегда\n"
+        "`.unrape <id>` — убрать\n"
+        "`.rape list` — список"
     ), inline=False)
-    embed.add_field(name="📨  Рассылка", value=(
-        "`!dm <текст>` | `/owner dm` — всем\n"
-        "`!dmold <текст>` | `/owner dmold` — кому писал\n"
-        "`!dmnew <текст>` | `/owner dmnew` — кому ещё не писал\n"
-        "`!dmu @user <текст>` | `/owner dmu` — конкретному\n"
-        "```\nРазделитель абзацев: /\n```"
-    ), inline=False)
-    embed.add_field(name="📩  ЛС — управление сервером", value=(
-        "`!servers` — список серверов бота\n"
-        "`!select <id>` — выбрать сервер\n"
-        "`!sban <id>` | `/srv ban` — забанить\n"
-        "`!sunban <id>` — разбанить\n"
-        "`!skick <id>` | `/srv kick` — кикнуть\n"
-        "`!smute <id> <мин>` — замьютить\n"
-        "`!sunmute <id>` — размьютить\n"
-        "`!ssay <ch_id> <текст>` | `/srv say` — написать в канал\n"
-        "`!sgiverole <uid> <rid>` — выдать роль\n"
-        "`!stakerole <uid> <rid>` — снять роль\n"
-        "`!smembers` | `/srv members` — участники\n"
-        "`!serverinfo` | `/srv info` — инфо о сервере"
-    ), inline=False)
-    embed.add_field(name="👑  Owner'ы", value=(
-        "`!addowner @user` | `/owner addowner` — добавить owner'а\n"
-        "`!removeowner @user` | `/owner removeowner` — убрать owner'а\n"
-        "`!owners` | `/owner owners` — список owner'ов"
+    embed.add_field(name="📨 Рассылка", value=(
+        "`!dm` — всем\n"
+        "`!dmold` — кому писал\n"
+        "`!dmnew` — кому не писал\n"
+        "`!dmu @user <текст>`\n"
+        "`/owner dm/dmold/dmnew/dmu`"
     ), inline=True)
-    embed.add_field(name="💬  ЛС — просмотр", value=(
-        "`!dms` | `/owner dms`\n"
-        "`!replied` | `/owner replied`\n"
-        "`!dmls <id>` | `/owner dmls`\n"
-        "`!dmsscan` | `/owner dmsscan`"
+    embed.add_field(name="📩 Управление сервером", value=(
+        "`!servers` `!select <id>`\n"
+        "`!sban` `!sunban` `!skick`\n"
+        "`!smute` `!sunmute`\n"
+        "`!ssay` `!sgiverole`\n"
+        "`!smembers` `!serverinfo`"
     ), inline=True)
-    embed.add_field(name="⚙️  Управление", value=(
-        "`!clearwl` — очистить whitelist\n"
+    embed.add_field(name="👑 Owner'ы", value=(
+        "`!addowner @user`\n"
+        "`!removeowner @user`\n"
+        "`!owners`"
+    ), inline=True)
+    embed.add_field(name="💬 ЛС", value=(
+        "`!dms` `!replied`\n"
+        "`!dmls <id>`\n"
+        "`!dmsscan`"
+    ), inline=True)
+    embed.add_field(name="⚙️ Прочее", value=(
+        "`!clearwl`\n"
         "`!blacklist add/remove/list`\n"
-        "`!backup` / `!restore`\n"
-        "`!botnick @bot <ник>` — ник бота\n"
-        "`!ohelp` | `/owner help`"
+        "`!backup` `!restore`\n"
+        "`!botnick @bot <ник>`\n"
+        "`!ohelp`"
     ), inline=True)
-    embed.set_footer(text="ArchAngel Bot  •  Создатель: DavaidKa")
+    embed.set_footer(text="ArchAngel Bot  •  DavaidKa")
     embed.timestamp = discord.utils.utcnow()
     return embed
 
