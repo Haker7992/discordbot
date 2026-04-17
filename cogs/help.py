@@ -15,7 +15,7 @@ def build_help_embed():
             "```ansi\n"
             "\u001b[1;33m  Система защиты сервера 24/7\u001b[0m\n"
             "```\n"
-            f"**Префикс:** `{PREFIX}`  **|**  **Slash:** `/`"
+            f"**Префикс:** `{PREFIX}`  **|**  **Slash:** `/`  **|**  **ЛС:** `.`"
         ),
         color=GOLD
     )
@@ -28,10 +28,10 @@ def build_help_embed():
             "Удал. канала   → бан + авто-восстановление\n"
             "Удал. роли     → бан + авто-восстановление\n"
             "Изм. канала    → откат изменений\n"
-            "5+ снятий ролей за 30с → бан\n"
-            "5+ мьютов за 30с → снятие всех ролей\n"
+            "5+ ролей за 30с → бан\n"
             "Ссылка в чате  → удаление + таймаут 15м\n"
             "@everyone/@here → удаление сообщения\n"
+            "Добавление бота → кик бота\n"
             "```"
         ),
         inline=False
@@ -44,8 +44,10 @@ def build_help_embed():
             f"`{PREFIX}whitelist remove @user`\n"
             f"`{PREFIX}whitelist list`\n"
             f"`{PREFIX}whitelist perms @user`\n"
+            f"`{PREFIX}whitelist role add/remove/list/perms`\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "`/whitelist add/remove/list/perms`"
+            "`/whitelist add/remove/list/perms`\n"
+            "`/whitelist role_add/role_remove/role_list/role_perms`"
         ),
         inline=True
     )
@@ -64,13 +66,27 @@ def build_help_embed():
     )
 
     embed.add_field(
+        name="🔒  Rape List (только в ЛС, префикс `.`)",
+        value=(
+            "`.rape <id> <дней>d [причина]` — забанить\n"
+            "`.rape 123 999d спам` — бан на 999 дней\n"
+            "`.rape 123 0d` — бан навсегда\n"
+            "`.unrape <id>` — убрать из списка\n"
+            "`.rape list` — список\n"
+            "При разбане — авторебан автоматически."
+        ),
+        inline=False
+    )
+
+    embed.add_field(
         name="⚙️  Настройки",
         value=(
             f"`{PREFIX}settings` | `/settings menu`\n"
-            f"`{PREFIX}setup` | `/setup`\n"
-            f"`{PREFIX}unsetup` | `/unsetup`\n"
+            f"`{PREFIX}setup` | `/setup` — создать лог-каналы\n"
+            f"`{PREFIX}unsetup` | `/unsetup` — удалить лог-каналы\n"
             f"`{PREFIX}serverinfo` | `/serverinfo`\n"
-            f"`{PREFIX}backup` / `{PREFIX}restore`"
+            f"`{PREFIX}backup` / `{PREFIX}restore`\n"
+            f"`{PREFIX}info` | `/info` — о боте"
         ),
         inline=False
     )
@@ -78,19 +94,19 @@ def build_help_embed():
     embed.add_field(
         name="🛡️  Модерация",
         value=(
-            f"`{PREFIX}warn @user [причина]` | `/warn` — предупреждение\n"
-            f"`{PREFIX}warns [@user]` | `/warns` — список предупреждений\n"
-            f"`{PREFIX}clearwarns @user` — сбросить предупреждения\n"
-            f"`{PREFIX}clear [кол-во]` | `/clear` — очистить чат\n"
-            f"`{PREFIX}slowmode [сек]` | `/slowmode` — замедление\n"
-            f"`{PREFIX}lock` | `/lock` — закрыть канал\n"
-            f"`{PREFIX}unlock` | `/unlock` — открыть канал\n"
-            f"`{PREFIX}userinfo [@user]` | `/userinfo` — инфо о пользователе\n"
-            f"`{PREFIX}roleinfo @role` | `/roleinfo` — инфо о роли\n"
-            f"`{PREFIX}autorole @role` | `/autorole` — авто-роль при входе"
+            f"`{PREFIX}warn @user [причина]` | `/warn`\n"
+            f"`{PREFIX}warns [@user]` | `/warns`\n"
+            f"`{PREFIX}clearwarns @user`\n"
+            f"`{PREFIX}clear [кол-во]` | `/clear`\n"
+            f"`{PREFIX}slowmode [сек]` | `/slowmode`\n"
+            f"`{PREFIX}lock` / `{PREFIX}unlock` | `/lock` `/unlock`\n"
+            f"`{PREFIX}userinfo [@user]` | `/userinfo`\n"
+            f"`{PREFIX}roleinfo @role` | `/roleinfo`\n"
+            f"`{PREFIX}autorole @role` | `/autorole`"
         ),
         inline=False
     )
+    embed.set_footer(text="!ohelp — панель owner команд  •  /info — подробнее о боте")
     embed.timestamp = discord.utils.utcnow()
     return embed
 

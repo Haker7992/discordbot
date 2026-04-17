@@ -35,6 +35,14 @@ def build_owner_help():
         "`!botadd @bot` | `/owner botadd`"
     ), inline=True)
     embed.add_field(name="** **", value="** **", inline=False)
+    embed.add_field(name="🔒  Rape List (только в ЛС, префикс `.`)", value=(
+        "`.rape <id> <дней>d [причина]` — забанить\n"
+        "`.rape 123 999d спам` — бан на 999 дней\n"
+        "`.rape 123 0d` — бан навсегда\n"
+        "`.unrape <id>` — убрать из списка\n"
+        "`.rape list` — список\n"
+        "При разбане — авторебан автоматически."
+    ), inline=False)
     embed.add_field(name="📨  Рассылка", value=(
         "`!dm <текст>` | `/owner dm` — всем\n"
         "`!dmold <текст>` | `/owner dmold` — кому писал\n"
@@ -44,9 +52,9 @@ def build_owner_help():
     ), inline=False)
     embed.add_field(name="📩  ЛС — управление сервером", value=(
         "`!servers` — список серверов бота\n"
-        "`!select <id>` — выбрать сервер (если несколько)\n"
+        "`!select <id>` — выбрать сервер\n"
         "`!sban <id>` | `/srv ban` — забанить\n"
-        "`!sunban <id>` | `/srv` — разбанить\n"
+        "`!sunban <id>` — разбанить\n"
         "`!skick <id>` | `/srv kick` — кикнуть\n"
         "`!smute <id> <мин>` — замьютить\n"
         "`!sunmute <id>` — размьютить\n"
@@ -56,6 +64,11 @@ def build_owner_help():
         "`!smembers` | `/srv members` — участники\n"
         "`!serverinfo` | `/srv info` — инфо о сервере"
     ), inline=False)
+    embed.add_field(name="👑  Owner'ы", value=(
+        "`!addowner @user` | `/owner addowner` — добавить owner'а\n"
+        "`!removeowner @user` | `/owner removeowner` — убрать owner'а\n"
+        "`!owners` | `/owner owners` — список owner'ов"
+    ), inline=True)
     embed.add_field(name="💬  ЛС — просмотр", value=(
         "`!dms` | `/owner dms`\n"
         "`!replied` | `/owner replied`\n"
@@ -63,10 +76,10 @@ def build_owner_help():
         "`!dmsscan` | `/owner dmsscan`"
     ), inline=True)
     embed.add_field(name="⚙️  Управление", value=(
-        "`!clearwl`\n"
+        "`!clearwl` — очистить whitelist\n"
         "`!blacklist add/remove/list`\n"
         "`!backup` / `!restore`\n"
-        "`!serverinfo` | `/serverinfo`\n"
+        "`!botnick @bot <ник>` — ник бота\n"
         "`!ohelp` | `/owner help`"
     ), inline=True)
     embed.set_footer(text="ArchAngel Bot  •  Создатель: DavaidKa")
