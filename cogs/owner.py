@@ -32,11 +32,9 @@ def build_owner_help():
         "`/owner giverole/takerole`"
     ), inline=True)
     embed.add_field(name="🔒 Rape List (`.` префикс)", value=(
-        "`.rape <id> <дней>d [причина]`\n"
-        "`.rape 123 999d спам`\n"
-        "`.rape 123 0d` — навсегда\n"
-        "`.unrape <id>` — убрать\n"
-        "`.rape list` — список"
+        "`.rape <id/@> <дней>d [причина]`\n"
+        "`.unrape <id/@>`\n"
+        "`.rape list`"
     ), inline=False)
     embed.add_field(name="📨 Рассылка", value=(
         "`!dm` — всем\n"

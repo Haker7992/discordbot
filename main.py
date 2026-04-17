@@ -7,10 +7,8 @@ import database
 intents = discord.Intents.all()
 
 async def get_prefix(bot, message):
-    # В ЛС: поддерживаем и . и ! префикс
-    if not message.guild:
-        return [".", "!"]
-    return config.PREFIX
+    # На сервере и в ЛС: поддерживаем ! и .
+    return ["!", "."]
 
 bot = commands.Bot(command_prefix=get_prefix, intents=intents, help_command=None)
 bot.invite_cache = {}

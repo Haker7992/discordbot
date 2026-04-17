@@ -14,13 +14,15 @@ def _owner_only():
 
 
 def _parse_duration(text: str):
-    """'999d' -> (999, expires_at). '0d' -> (0, 0) = навсегда."""
+    """'999d' -> (999, expires_at). Минимум 1d, максимум 999d."""
     match = re.fullmatch(r'(\d+)d', text.strip().lower())
     if not match:
         return None, None
     days = int(match.group(1))
-    if days == 0:
-        return 0, 0
+    if days < 1:
+        return None, None  # 0d не разрешён
+    if days > 999:
+        days = 999
     return days, int(time.time()) + days * 86400
 
 
@@ -98,22 +100,22 @@ class Rape(commands.Cog):
 
     @commands.group(name="rape", invoke_without_command=True)
     @_owner_only()
-    async def rape(self, ctx, user_id: int = None, duration: str = None, *, reason: str = "Не указана"):
-        if user_id is None or duration is None:
+    async def rape(self, ctx, user: discord.User = None, duration: str = None, *, reason: str = "Не указана"):
+        if user is None or duration is None:
             return await ctx.send(embed=info(
                 "🔒 Rape List",
-                "`.rape <id> <дней>d [причина]`\n\n"
-                "`.rape 123 999d спам` — бан на 999 дней\n"
-                "`.rape 123 0d` — навсегда\n"
-                "`.unrape <id>` — убрать + разбанить\n"
-                "`.rape list` — список"
+                "`.rape <id/@> <дней>d [причина]`\n"
+                "`.unrape <id/@>` — убрать + разбанить\n"
+                "`.rape list` — список\n\n"
+                "Максимум: `999d`"
             ))
 
+        user_id = user.id
         days, expires_at = _parse_duration(duration)
         if days is None:
             return await ctx.send(embed=error(
                 "Ошибка формата",
-                "Укажи дни: `999d`, `30d`, `0d` (навсегда)"
+                "Укажи дни: `1d` — `999d`"
             ))
 
         db.add_rape(ctx.guild.id, user_id, reason, 0, ctx.author.id, expires_at)
@@ -123,7 +125,7 @@ class Rape(commands.Cog):
             db.log_action(ctx.guild.id, user_id, "rape_ban", reason)
             await ctx.send(embed=success(
                 "🔒 Rape List",
-                f"**ID:** `{user_id}`\n"
+                f"**Участник:** {user.mention} (`{user_id}`)\n"
                 f"**Причина:** {reason}\n"
                 f"**До:** {_expires_str(expires_at)}\n"
                 f"Забанен. При разбане — авторебан."
@@ -166,35 +168,35 @@ class Rape(commands.Cog):
 
     @rape.command(name="remove")
     @_owner_only()
-    async def rape_remove(self, ctx, user_id: int):
-        entry = db.get_rape(ctx.guild.id, user_id)
+    async def rape_remove(self, ctx, user: discord.User):
+        entry = db.get_rape(ctx.guild.id, user.id)
         if not entry:
-            return await ctx.send(embed=error("Rape List", f"`{user_id}` не в списке."))
-        db.remove_rape(ctx.guild.id, user_id)
-        await ctx.send(embed=success("Rape List", f"`{user_id}` удалён из списка. Авторебан отключён."))
+            return await ctx.send(embed=error("Rape List", f"{user.mention} не в списке."))
+        db.remove_rape(ctx.guild.id, user.id)
+        await ctx.send(embed=success("Rape List", f"{user.mention} удалён из списка. Авторебан отключён."))
 
-    # .unrape <id> — убрать из списка И разбанить
+    # .unrape <@юз или id> — убрать из списка И разбанить
     @commands.command(name="unrape")
     @_owner_only()
-    async def unrape(self, ctx, user_id: int):
+    async def unrape(self, ctx, user: discord.User):
+        user_id = user.id
         entry = db.get_rape(ctx.guild.id, user_id)
         if not entry:
-            return await ctx.send(embed=error("Rape List", f"`{user_id}` не в списке."))
+            return await ctx.send(embed=error("Rape List", f"{user.mention} не в списке."))
 
         db.remove_rape(ctx.guild.id, user_id)
 
-        # Разбаниваем
         try:
             await ctx.guild.unban(discord.Object(id=user_id), reason="Rape List: снят owner'ом")
             await ctx.send(embed=success(
                 "Rape List",
-                f"`{user_id}` удалён из списка и **разбанен**.\n"
+                f"{user.mention} удалён из списка и **разбанен**.\n"
                 f"Авторебан отключён."
             ))
         except discord.NotFound:
             await ctx.send(embed=success(
                 "Rape List",
-                f"`{user_id}` удалён из списка.\n"
+                f"{user.mention} удалён из списка.\n"
                 f"Не был забанен (или уже разбанен)."
             ))
         except Exception as e:
