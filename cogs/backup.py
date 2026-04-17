@@ -62,7 +62,29 @@ class Backup(commands.Cog):
         if hasattr(self.bot, 'unsetup_guilds') and guild.id in self.bot.unsetup_guilds:
             return
 
+        # Не восстанавливаем лог-каналы бота
+        settings = db.get_settings(guild.id)
+        log_keys = ["log_channel", "role_log_channel", "channel_log_channel",
+                    "mute_log_channel", "whitelist_log_channel", "join_log_channel", "settings_channel"]
+        log_ids = {str(settings.get(k)) for k in log_keys if settings.get(k)}
+        if str(channel.id) in log_ids:
+            return
+
+        # Не восстанавливаем категорию с именем "Logs" если её удалил бот
+        if isinstance(channel, discord.CategoryChannel) and "logs" in channel.name.lower():
+            await asyncio.sleep(0.5)
+            try:
+                async for entry in guild.audit_logs(limit=3, action=discord.AuditLogAction.channel_delete):
+                    if time.time() - entry.created_at.timestamp() < 5:
+                        if entry.user.id == self.bot.user.id:
+                            return
+                        break
+            except Exception:
+                pass
+
         snapshot = self._snapshots.get(guild.id)
+        if not snapshot:
+            return
         if not snapshot:
             return
 

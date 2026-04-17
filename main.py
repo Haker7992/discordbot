@@ -102,7 +102,8 @@ async def delete_log_channels(guild):
             except Exception:
                 pass
 
-    # Снимаем флаг
+    # Снимаем флаг после небольшой задержки чтобы все события успели обработаться
+    await asyncio.sleep(2)
     bot.unsetup_guilds.discard(guild.id)
 
 
