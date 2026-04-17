@@ -288,10 +288,37 @@ class AntiRaid(commands.Cog):
 
 
 
-    # --- ВХОД: если получил роль выше × ᴍᴇᴍʙᴇʀs — бан ---
+    # --- ВХОД БОТА → кик если добавил не owner/whitelist ---
     @commands.Cog.listener()
     async def on_member_join(self, member):
         guild = member.guild
+
+    # --- ВХОД БОТА → кик если добавил не owner/whitelist ---
+    # --- ВХОД УЧАСТНИКА → бан если роль выше порога ---
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        guild = member.guild
+
+        # Проверяем только ботов
+        if member.bot and member.id != self.bot.user.id:
+            await asyncio.sleep(0.5)
+            # Ищем кто добавил бота через audit log
+            executor = await self.get_executor(guild, discord.AuditLogAction.bot_add)
+            if executor:
+                exec_member = guild.get_member(executor.id)
+                # Если добавил owner или вайтлистер с полными правами — разрешаем
+                if is_whitelisted(guild.id, executor.id, "all", member=exec_member):
+                    return
+            # Кикаем бота
+            try:
+                await guild.kick(member, reason="Anti-Raid: бот добавлен без разрешения")
+                db.log_action(guild.id, member.id, "bot_kick", f"Добавил: {executor.id if executor else 'неизвестно'}")
+                print(f"[ANTI-RAID] Kicked bot {member.id} ({member.name})")
+                await send_log(guild, member.id, f"Anti-Raid: бот {member.name} кикнут (добавил: {executor.mention if executor else 'неизвестно'})")
+            except Exception as e:
+                print(f"[BOT KICK] {e}")
+            return
+
         # Ждём немного — роль может выдаться чуть позже
         await asyncio.sleep(3)
         fresh = guild.get_member(member.id)
