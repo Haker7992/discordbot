@@ -7,6 +7,7 @@ import database
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=config.PREFIX, intents=intents, help_command=None, dm_help=True)
 bot.invite_cache = {}  # кэш инвайтов для отслеживания входов
+bot.unsetup_guilds = set()  # guild_id где сейчас идёт unsetup — не восстанавливать каналы
 
 COGS = ["cogs.antiraid", "cogs.whitelist", "cogs.protect", "cogs.settings", "cogs.help", "cogs.logger", "cogs.owner", "cogs.blacklist", "cogs.backup", "cogs.dm_control", "cogs.moderation", "cogs.antispam", "cogs.rape"]
 
@@ -65,8 +66,19 @@ async def setup_log_channels(guild):
 
 async def delete_log_channels(guild):
     """Удаляет все лог-каналы и категорию."""
+    # Помечаем что идёт unsetup — logger не будет восстанавливать каналы
+    bot.unsetup_guilds.add(guild.id)
+
     settings = database.get_settings(guild.id)
     keys = ["log_channel", "role_log_channel", "channel_log_channel", "mute_log_channel", "whitelist_log_channel", "settings_channel"]
+
+    # Сначала сбрасываем настройки
+    for key in keys:
+        try:
+            database.update_setting(guild.id, key, "")
+        except Exception:
+            pass
+
     deleted_categories = set()
     for key in keys:
         ch_id = settings.get(key)
@@ -80,10 +92,7 @@ async def delete_log_channels(guild):
                 await ch.delete(reason="Unsetup")
             except Exception:
                 pass
-        try:
-            database.update_setting(guild.id, key, "")
-        except Exception:
-            pass
+
     await asyncio.sleep(0.5)
     for cat in deleted_categories:
         fresh_cat = guild.get_channel(cat.id)
@@ -92,6 +101,9 @@ async def delete_log_channels(guild):
                 await fresh_cat.delete(reason="Unsetup: категория пуста")
             except Exception:
                 pass
+
+    # Снимаем флаг
+    bot.unsetup_guilds.discard(guild.id)
 
 
 # ── Setup UI ──

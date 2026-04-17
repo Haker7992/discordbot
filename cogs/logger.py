@@ -234,6 +234,10 @@ class Logger(commands.Cog):
     async def on_guild_channel_delete(self, channel):
         guild = channel.guild
 
+        # Если идёт unsetup — не восстанавливаем
+        if hasattr(self.bot, 'unsetup_guilds') and guild.id in self.bot.unsetup_guilds:
+            return
+
         # Не восстанавливаем лог-каналы бота
         settings = db.get_settings(guild.id)
         log_keys = ["log_channel", "role_log_channel", "channel_log_channel", "mute_log_channel", "whitelist_log_channel", "settings_channel"]

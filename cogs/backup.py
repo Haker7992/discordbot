@@ -57,6 +57,11 @@ class Backup(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
+
+        # Если идёт unsetup — не восстанавливаем
+        if hasattr(self.bot, 'unsetup_guilds') and guild.id in self.bot.unsetup_guilds:
+            return
+
         snapshot = self._snapshots.get(guild.id)
         if not snapshot:
             return
