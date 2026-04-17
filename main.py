@@ -12,7 +12,7 @@ async def get_prefix(bot, message):
         return [".", "!"]
     return config.PREFIX
 
-bot = commands.Bot(command_prefix=get_prefix, intents=intents, help_command=None, dm_help=True)
+bot = commands.Bot(command_prefix=get_prefix, intents=intents, help_command=None)
 bot.invite_cache = {}
 bot.unsetup_guilds = set()
 
@@ -275,7 +275,7 @@ async def on_command_error(ctx, error):
         )
         await ctx.send(embed=embed)
     elif isinstance(error, commands.CheckFailure):
-        pass
+        pass  # молча игнорируем — включает _dm_only() и _owner_only()
     else:
         print(f"[ERROR] {error}")
 
