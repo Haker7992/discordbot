@@ -108,6 +108,7 @@ class Logger(commands.Cog):
             "name": channel.name, "type": channel.type,
             "position": channel.position,
             "category_id": channel.category_id if hasattr(channel, "category_id") else None,
+            "category_name": channel.category.name if hasattr(channel, "category") and channel.category else None,
             "overwrites": {
                 str(t.id): {
                     "type": "role" if isinstance(t, discord.Role) else "member",
@@ -425,7 +426,13 @@ class Logger(commands.Cog):
             if target:
                 overwrites[target] = perms
 
-        category = guild.get_channel(data["category_id"]) if data.get("category_id") else None
+        # Ищем категорию: сначала по ID, потом по имени
+        category = None
+        if data.get("category_id"):
+            category = guild.get_channel(int(data["category_id"]))
+        if not category and data.get("category_name"):
+            category = discord.utils.get(guild.categories, name=data["category_name"])
+
         ch_type = data["type"]
         new_ch = None
         try:
@@ -452,7 +459,7 @@ class Logger(commands.Cog):
             await asyncio.sleep(0.3)
             await new_ch.edit(position=data["position"])
             channel_cache[guild.id][new_ch.id] = data
-            print(f"[RESTORE] Восстановлен: {data['name']}")
+            print(f"[RESTORE] Восстановлен: {data['name']} в категории: {category.name if category else 'нет'}")
         except Exception as e:
             print(f"[RESTORE] Ошибка: {e}")
 
