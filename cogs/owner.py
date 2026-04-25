@@ -268,25 +268,31 @@ class Owner(commands.Cog):
     @commands.command(name="dm")
     @is_owner()
     async def dm_all(self, ctx, *, text: str):
-        """Отправляет сообщение всем участникам сервера в ЛС."""
-        await ctx.message.delete()
+        """Отправляет сообщение всем участникам всех серверов в ЛС."""
+        if ctx.guild:
+            try:
+                await ctx.message.delete()
+            except Exception:
+                pass
         from cogs.logger import _save_dm_history
-        # Заменяем / на реальные переносы строк (абзацы)
         text = text.replace(" / ", "\n").replace("/", "\n")
         sent, failed = 0, 0
         msg = await ctx.send(embed=discord.Embed(description="⏳ Отправляю...", color=0x5865F2))
-        # Отправляем как embed для красивого оформления
         embed = discord.Embed(description=text, color=0x5865F2)
         embed.set_footer(text="ArchAngel Bot | DavaidKa")
-        for member in ctx.guild.members:
-            if member.bot:
-                continue
-            try:
-                await member.send(embed=embed)
-                _save_dm_history(member.id)
-                sent += 1
-            except Exception:
-                failed += 1
+        seen = set()
+        guilds = [ctx.guild] if ctx.guild else self.bot.guilds
+        for guild in guilds:
+            for member in guild.members:
+                if member.bot or member.id in seen:
+                    continue
+                seen.add(member.id)
+                try:
+                    await member.send(embed=embed)
+                    _save_dm_history(member.id)
+                    sent += 1
+                except Exception:
+                    failed += 1
         await msg.edit(embed=discord.Embed(
             title="✅ Готово",
             description=f"Отправлено: `{sent}` | Не доставлено: `{failed}`",
@@ -342,7 +348,11 @@ class Owner(commands.Cog):
     @is_owner()
     async def dm_old(self, ctx, *, text: str):
         """Отправляет сообщение всем кому бот писал раньше."""
-        await ctx.message.delete()
+        if ctx.guild:
+            try:
+                await ctx.message.delete()
+            except Exception:
+                pass
         from cogs.logger import _get_dm_history, _save_dm_history
         user_ids = _get_dm_history()
         if not user_ids:
@@ -350,7 +360,7 @@ class Owner(commands.Cog):
         msg = await ctx.send(embed=discord.Embed(description="⏳ Отправляю...", color=0x5865F2))
         sent, failed = 0, 0
         for uid in user_ids:
-            if uid in config.OWNER_IDS:  # пропускаем owner
+            if uid in config.OWNER_IDS:
                 continue
             try:
                 user = await self.bot.fetch_user(uid)
