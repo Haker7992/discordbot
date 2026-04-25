@@ -16,7 +16,8 @@ class AntiSpam(commands.Cog):
     async def on_message(self, message):
         if not message.guild or message.author.bot:
             return
-        if is_whitelisted(message.guild.id, message.author.id, "all"):
+        member = message.guild.get_member(message.author.id)
+        if is_whitelisted(message.guild.id, message.author.id, "all", member=member):
             return
 
         now = time.time()

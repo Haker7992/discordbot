@@ -76,6 +76,10 @@ class AntiRaid(commands.Cog):
     # --- БАН → моментальный бан исполнителя ---
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
+        # Не трогаем вайтлистеров и их действия над вайтлистерами
+        user_member = guild.get_member(user.id)
+        if is_whitelisted(guild.id, user.id, member=user_member):
+            return
         executor = await self.get_executor(guild, discord.AuditLogAction.ban)
         if not executor or executor.id == self.bot.user.id:
             return
@@ -88,6 +92,10 @@ class AntiRaid(commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, member):
         guild = member.guild
+        # Не реагируем если кикнули вайтлистера
+        member_obj = guild.get_member(member.id) or member
+        if is_whitelisted(guild.id, member.id, member=member_obj):
+            return
         executor = await self.get_executor(guild, discord.AuditLogAction.kick, member.id)
         if not executor or executor.id == self.bot.user.id:
             return
@@ -122,10 +130,9 @@ class AntiRaid(commands.Cog):
 
         exec_member = guild.get_member(executor.id)
 
-        # Если вайтлистер создал — не трогаем
-        if exec_member and not exec_member.bot:
-            if is_whitelisted(guild.id, executor.id, "channels", member=exec_member):
-                return
+        # Если вайтлистер создал — не трогаем канал
+        if is_whitelisted(guild.id, executor.id, "channels", member=exec_member):
+            return
 
         # Удаляем канал и баним
         try:
@@ -229,6 +236,11 @@ class AntiRaid(commands.Cog):
         if is_whitelisted(guild.id, executor.id, "roles", member=exec_member):
             return
 
+        # Не трогаем вайтлистеров — не откатываем их роли
+        after_member = guild.get_member(after.id)
+        if is_whitelisted(guild.id, after.id, member=after_member):
+            return
+
         # Выдача ролей: если 5+ за 30 сек — бан, иначе откат
         if added:
             if track_action(guild.id, executor.id, "role_add", limit=5, interval=30):
@@ -257,16 +269,16 @@ class AntiRaid(commands.Cog):
             except Exception as e:
                 print(f"[MUTE ROLES] {e}")
 
-    # --- СПАМ ССЫЛКАМИ → моментальный бан ---
+    # --- СПАМ ССЫЛКАМИ → удаление + тайм-аут 10 минут ---
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot or not message.guild:
             return
 
-        settings = db.get_settings(message.guild.id)
+        member = message.guild.get_member(message.author.id)
 
         # --- Защита от @everyone / @here ---
-        if not is_whitelisted(message.guild.id, message.author.id, "mention_everyone", member=message.author if isinstance(message.author, discord.Member) else None):
+        if not is_whitelisted(message.guild.id, message.author.id, "mention_everyone", member=member):
             if "@everyone" in message.content or "@here" in message.content:
                 try:
                     await message.delete()
@@ -276,17 +288,16 @@ class AntiRaid(commands.Cog):
                 return
 
         # --- Защита от ссылок ---
-        if not is_whitelisted(message.guild.id, message.author.id, "links", member=message.author if isinstance(message.author, discord.Member) else None):
+        if not is_whitelisted(message.guild.id, message.author.id, "links", member=member):
             if URL_REGEX.search(message.content):
                 try:
                     await message.delete()
                 except Exception:
                     pass
                 try:
-                    member = message.guild.get_member(message.author.id)
                     if member:
                         import datetime
-                        await member.timeout(discord.utils.utcnow() + datetime.timedelta(minutes=15),
+                        await member.timeout(discord.utils.utcnow() + datetime.timedelta(minutes=10),
                                              reason="Anti-Raid: Ссылка в чате")
                 except Exception:
                     pass
