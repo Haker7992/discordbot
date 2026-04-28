@@ -206,7 +206,7 @@ class Logger(commands.Cog):
         try:
             embed = discord.Embed(
                 title="# Привет дорогой друг!",
-                description="**Рады видеть тебя в Архангелах!**\n\n**Бот создавал ебейший гениус DavaidKa**",
+                description="**Рады видеть тебя в 🤖 Kanero!**\n\n**Бот создавал ебейший гениус DavaidKa**",
                 color=0x5865F2
             )
             embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
